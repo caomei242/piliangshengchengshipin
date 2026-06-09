@@ -612,6 +612,14 @@ flowchart TD
 - OSS 上传和结果地址返回。
 - 图片选择和主图数量失败口径。
 
+代码仓库和版本管理：
+
+- GitHub 仓库：`https://github.com/caomei242/piliangshengchengshipin`
+- SSH 地址：`git@github.com:caomei242/piliangshengchengshipin.git`
+- 默认分支：`main`
+- 2026-06-09 已推送当前代码树作为远端干净初始提交；原 Pixelle 上游只作为本地 `upstream` 对比来源。
+- 日常改动按 `git add`、`git commit`、`git push` 管理；提交前必须确认 `.env`、真实 Ark/OSS 密钥、1Panel 密码和内部 token 没有进入 Git。
+
 后续待技术评审和开发：
 
 - 将 PIM worker 在目标环境启用：`GET /api/video-tool/get?type=1` 领取任务，`POST /api/video-tool/submit` 回传结果。

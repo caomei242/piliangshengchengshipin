@@ -19,6 +19,14 @@
 - 同步代码到远端时必须排除 `.env`、`run_product_api.sh`、`.codex-bin/`、`.codex_py_logs/`、`.venv/`、`output/`、`data/` 和 `/service/pixelle-video-product-api-data/`。
 - `.codex-bin/` 只允许作为本地临时工具目录，不能进入 Docker build context 或远端服务器；它可能包含 macOS/arm64 ffmpeg 链接，放到 Linux 服务器会抢占系统 `ffmpeg/ffprobe` 并导致生成失败。
 
+## 版本管理
+
+- 2026-06-09 起，本项目默认 GitHub 仓库为 `git@github.com:caomei242/piliangshengchengshipin.git`，对应页面是 `https://github.com/caomei242/piliangshengchengshipin`。
+- 本地 `origin` 指向上述业务仓库，日常提交使用 `git push` 推送到 `origin/main`。
+- 原 Pixelle 上游保留为 `upstream=https://github.com/AIDC-AI/Pixelle-Video.git`，只用于必要时查看或对比原项目，不作为默认推送目标。
+- 远端 `origin/main` 是 2026-06-09 用当前代码树做的干净初始提交，不带原 Pixelle 浅克隆历史；本地备份分支 `backup/shallow-upstream-before-publish` 保留了推送前的浅历史提交。
+- 提交前必须做密钥扫描，确认没有真实 Ark、OSS、1Panel、PIM 或内部 token 进入 Git。
+
 ## 接口约定
 
 - `POST /api/product-videos/jobs` 必须鉴权，并使用 `Idempotency-Key` 或请求体 `request_id` 做幂等。

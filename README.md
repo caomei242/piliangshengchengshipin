@@ -16,6 +16,8 @@ https://github.com/user-attachments/assets/a42e7457-fcc8-40da-83fc-784c45a8b95d
 
 <br/>
 
+> 本仓库是商品短视频生成服务专项版本，远端仓库为 `caomei242/piliangshengchengshipin`。它基于 Pixelle-Video 做业务接口扩展，重点维护 `/api/product-videos`、PIM worker、OSS 回传和商品主图生成口径。
+
 只需输入一个 **主题**，Pixelle-Video 就能自动完成：
 - ✍️ 撰写视频文案  
 - 🎨 生成 AI 配图/视频  
