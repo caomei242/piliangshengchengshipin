@@ -1,0 +1,28 @@
+# Product API image
+#
+# This deployment image reuses the previously built product studio runtime on
+# the 1Panel server, then overlays the API-mode source code. It avoids
+# reinstalling the full Pixelle dependency stack for every API-only change.
+
+ARG BASE_IMAGE=pixelle-video-product-studio:20260526
+FROM ${BASE_IMAGE}
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock README.md ./
+COPY pixelle_video ./pixelle_video
+COPY api ./api
+COPY scripts ./scripts
+COPY bgm ./bgm
+COPY templates ./templates
+COPY workflows ./workflows
+COPY resources ./resources
+COPY web ./web
+COPY docs/images ./docs/images
+COPY docs/FAQ*.md ./docs/
+
+RUN mkdir -p /app/output /app/data /app/temp
+
+EXPOSE 8000
+
+CMD [".venv/bin/python", "api/app.py", "--host", "0.0.0.0", "--port", "8000"]

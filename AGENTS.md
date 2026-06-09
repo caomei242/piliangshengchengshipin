@@ -1,0 +1,41 @@
+# Pixelle-Video 本地协作规则
+
+## 商品短视频接口服务
+
+- 本仓库包含原 Pixelle-Video 项目，以及本地二次开发的商品短视频接口服务。
+- 商品短视频接口入口在 `api/routers/product_videos.py`，后台任务逻辑在 `api/product_video_jobs.py`。
+- 对外接口前缀固定为 `/api/product-videos`。
+- 线上 Docker 服务监听容器内 `0.0.0.0:8000`，1Panel 映射为 `30005:8000`。
+- 线上镜像构建文件是 `Dockerfile.product-api`，compose 文件是 `docker-compose.product-api.yml`。
+- Mac 本地构建给 1Panel 服务器使用时，必须确认目标平台是 `linux/amd64`；不要默认交付 Apple Silicon 的 `arm64` 镜像。
+
+## 密钥和部署
+
+- 仓库内不得写入真实 `ARK_API_KEY`、`INTERNAL_API_TOKEN`、OSS AccessKey、1Panel 密码或其他密钥。
+- `docker-compose.product-api.yml` 只能从服务器 `.env` 读取 `ARK_API_KEY`、`INTERNAL_API_TOKEN` 和 `OSS_*` 环境变量。
+- 桌面上的产品/研发交接文档可以临时写明真实地址和测试 token；仓库 docs 只能写变量名和接口规格。
+- `/hlg` 是 1Panel 面板入口，不是业务接口路径；业务接口跑在服务根路径。
+- 2026-06-08 起，GPU 机器 `172.16.2.203` 使用 PM2 部署在 `/service/pixelle-video-product-api`；服务器上的 `.env`、`run_product_api.sh`、数据目录和 PM2 配置是远端运行态文件，不要从本地 rsync 覆盖或删除。
+- 同步代码到远端时必须排除 `.env`、`run_product_api.sh`、`.codex-bin/`、`.codex_py_logs/`、`.venv/`、`output/`、`data/` 和 `/service/pixelle-video-product-api-data/`。
+- `.codex-bin/` 只允许作为本地临时工具目录，不能进入 Docker build context 或远端服务器；它可能包含 macOS/arm64 ffmpeg 链接，放到 Linux 服务器会抢占系统 `ffmpeg/ffprobe` 并导致生成失败。
+
+## 接口约定
+
+- `POST /api/product-videos/jobs` 必须鉴权，并使用 `Idempotency-Key` 或请求体 `request_id` 做幂等。
+- `GET /api/product-videos/jobs/{job_id}` 用于研发轮询整批任务状态。
+- `GET /api/product-videos/items/{item_id}/video` 和 `/script` 也必须鉴权。
+- 商品视频默认规格为 1:1，目标时长为 14-16 秒。
+- 商品图优先读取结构化 `source_images`，兼容旧 `image_urls`；`source_images` 只允许商品主图参与生成，SKU 图、规格图、颜色图、详情图、评价图等非主图必须跳过；可用主图少于 `scene_count` 时商品失败，错误为 `source_images_insufficient`，不要复制或复用图片补位。
+- 生成成功后优先上传 OSS；`video_url` / `script_url` 优先返回 OSS 地址，`download_url` / `script_download_url` 只作为本地调试下载兜底。
+- 一个商品失败不影响同批次其他商品继续生成。
+- 当前默认并发先设 4：`PRODUCT_VIDEO_MAX_CONCURRENCY=4`，PIM worker 默认 `PIM_WORKER_CONCURRENCY=4`；`PIM_WORKER_ONCE=1` 联调时保持单任务，避免误领多条。
+- 服务启动时必须自动检测 CUDA/NVIDIA GPU；系统 `ffmpeg` 能看到 `h264_nvenc` 时，视频编码走 NVENC，默认 `PIXELLE_NVENC_PRESET=medium` 兼容 Ubuntu 20.04 的 ffmpeg 4.2。Chromium 帧渲染默认 CPU 稳定模式，只有显式设置 `PIXELLE_CHROMIUM_GPU=on` 时才尝试 GPU。
+- 批量生产对接 PIM 现有接口，不要求 PIM 调用我们的视频服务来创建批量任务：worker 调 `GET /api/video-tool/get?type=1` 取 1 个任务，生成后调 `POST /api/video-tool/submit` 回传 `status=2/3`。
+- PIM 环境地址：dev `https://gdpim-dev.huanleguang.com`，stage `https://gdpim-stage.huanleguang.com`，prod `https://gdpim.huanleguang.com`。
+- PIM 侧负责生成中状态和超时重置：每 30 分钟将生成中超过 1 小时未更新任务重置为等待生成；worker 不做心跳或续租。
+
+## 文档边界
+
+- 给产品或外部研发看的傻瓜版对接文档在 `/Users/gd/Desktop/商品短视频生成服务-产品对接说明.md`。
+- 仓库内长期接口文档在 `docs/zh/reference/product-video-product-brief.md` 和 `docs/zh/reference/api-overview.md`。
+- 架构和状态流转说明在 `docs/zh/development/architecture.md`。
