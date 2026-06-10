@@ -231,7 +231,7 @@ worker 收到 PIM task 后，将 `product.image_urls` 转成 `source_images[].im
   "id": 1001,
   "status": 3,
   "video_url": "",
-  "error_msg": "source_images_insufficient: 可用商品主图少于 scene_count"
+  "error_msg": "主图数量不足：生成视频需要 5 张可用主图，当前只有 3 张。会影响视频生成和商品转化效果。请补充商品主图后重试。"
 }
 ```
 

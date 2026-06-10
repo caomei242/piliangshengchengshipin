@@ -442,11 +442,13 @@ def image_preparation_customer_message(exc: ProductImagePreparationError) -> str
             return (
                 f"主图数量不足：生成视频需要 {target_count} 张可用主图，"
                 f"当前可用 {downloaded_count} 张；共提交 {submitted_count} 张，"
-                f"其中 {skipped_count} 张不是主图。请补充商品主图后重试。"
+                f"其中 {skipped_count} 张不是主图。会影响视频生成和商品转化效果。"
+                "请补充商品主图后重试。"
             )
         return (
             f"主图数量不足：生成视频需要 {target_count} 张可用主图，"
-            f"当前只有 {downloaded_count} 张。请补充商品主图后重试。"
+            f"当前只有 {downloaded_count} 张。会影响视频生成和商品转化效果。"
+            "请补充商品主图后重试。"
         )
 
     if "source_images_unusable" in raw_message:
