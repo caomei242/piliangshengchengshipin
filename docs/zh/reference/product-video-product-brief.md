@@ -620,6 +620,7 @@ flowchart TD
 - SSH 地址：`git@github.com:caomei242/piliangshengchengshipin.git`
 - 默认分支：`main`
 - 2026-06-09 已推送当前代码树作为远端干净初始提交；原 Pixelle 上游只作为本地 `upstream` 对比来源。
+- 2026-06-10 已创建公司 GitLab 项目：`https://git.intra.gaoding.com/microservice/piliangshengchengshipin`。当前该空仓库默认分支尚未初始化，SSH push 会被 GitLab pre-receive 拒绝；等 Owner/Maintainer 创建默认分支后，再把本地默认远端从 GitHub 切到公司 GitLab。
 - 日常改动按 `git add`、`git commit`、`git push` 管理；提交前必须确认 `.env`、真实 Ark/OSS 密钥、1Panel 密码和内部 token 没有进入 Git。
 
 后续待技术评审和开发：

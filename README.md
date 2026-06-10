@@ -16,7 +16,7 @@ https://github.com/user-attachments/assets/a42e7457-fcc8-40da-83fc-784c45a8b95d
 
 <br/>
 
-> 本仓库是商品短视频生成服务专项版本，远端仓库为 `caomei242/piliangshengchengshipin`。它基于 Pixelle-Video 做业务接口扩展，重点维护 `/api/product-videos`、PIM worker、OSS 回传和商品主图生成口径。
+> 本仓库是商品短视频生成服务专项版本，当前默认远端仍为 GitHub `caomei242/piliangshengchengshipin`；公司 GitLab `microservice/piliangshengchengshipin` 已创建但默认分支尚未初始化，待初始化后再切换默认远端。它基于 Pixelle-Video 做业务接口扩展，重点维护 `/api/product-videos`、PIM worker、OSS 回传和商品主图生成口径。
 
 只需输入一个 **主题**，Pixelle-Video 就能自动完成：
 - ✍️ 撰写视频文案  
@@ -33,7 +33,7 @@ https://github.com/user-attachments/assets/a42e7457-fcc8-40da-83fc-784c45a8b95d
 ![Web UI界面](resources/webui.png)
 
 
-## 📋 最近更新
+## 📋 更新记录
 
 - ✅ **2026-06-08**: 本地专项扩展「商品短视频生成服务」已支持 `/api/product-videos` 任务接口、PIM worker 主动领任务、OSS 结果回传、主图不足失败口径和 GPU/NVENC 自动编码；详见 `docs/zh/reference/product-video-product-brief.md`
 - ✅ **2026-01-26**: 新增「动作迁移」模块，上传参考视频和图片进行动作迁移

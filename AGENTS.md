@@ -23,7 +23,8 @@
 ## 版本管理
 
 - 2026-06-09 起，本项目默认 GitHub 仓库为 `git@github.com:caomei242/piliangshengchengshipin.git`，对应页面是 `https://github.com/caomei242/piliangshengchengshipin`。
-- 本地 `origin` 指向上述业务仓库，日常提交使用 `git push` 推送到 `origin/main`。
+- 2026-06-10 已创建公司 GitLab 项目 `https://git.intra.gaoding.com/microservice/piliangshengchengshipin`，本地临时远端名为 `intra=git@git.intra.gaoding.com:microservice/piliangshengchengshipin.git`；目前公司 GitLab 空仓库默认分支尚未初始化，SSH push 会被 pre-receive 拒绝，等 Owner/Maintainer 创建默认分支后再推送并切换默认 `origin`。
+- 当前本地 `origin` 仍指向 GitHub 业务仓库，日常提交使用 `git push` 推送到 `origin/main`；公司 GitLab 初始化完成前不要把 `origin` 改到 `intra`。
 - 原 Pixelle 上游保留为 `upstream=https://github.com/AIDC-AI/Pixelle-Video.git`，只用于必要时查看或对比原项目，不作为默认推送目标。
 - 远端 `origin/main` 是 2026-06-09 用当前代码树做的干净初始提交，不带原 Pixelle 浅克隆历史；本地备份分支 `backup/shallow-upstream-before-publish` 保留了推送前的浅历史提交。
 - 提交前必须做密钥扫描，确认没有真实 Ark、OSS、1Panel、PIM 或内部 token 进入 Git。
