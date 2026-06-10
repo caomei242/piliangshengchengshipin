@@ -38,7 +38,7 @@
 - 商品图优先读取结构化 `source_images`，兼容旧 `image_urls`；`source_images` 只允许商品主图参与生成，SKU 图、规格图、颜色图、详情图、评价图等非主图必须跳过；可用主图少于 `scene_count` 时商品失败，错误为 `source_images_insufficient`，不要复制或复用图片补位。
 - 生成成功后优先上传 OSS；`video_url` / `script_url` 优先返回 OSS 地址，`download_url` / `script_download_url` 只作为本地调试下载兜底。
 - 一个商品失败不影响同批次其他商品继续生成。
-- 当前线上 PIM worker 并发设为 30：`PIM_WORKER_CONCURRENCY=30`；手工 API 生成并发仍保持 `PRODUCT_VIDEO_MAX_CONCURRENCY=4`，避免 API 服务被误开后直接高并发。`PIM_WORKER_ONCE=1` 联调时保持单任务，避免误领多条。
+- 当前线上 PIM worker 单机并发设为 15：`PIM_WORKER_CONCURRENCY=15`；2026-06-10 已验证单机 30 并发会让 CPU/ffmpeg 合成阶段打满并触发 240 秒超时。手工 API 生成并发仍保持 `PRODUCT_VIDEO_MAX_CONCURRENCY=4`，避免 API 服务被误开后直接高并发。`PIM_WORKER_ONCE=1` 联调时保持单任务，避免误领多条。
 - PIM worker 必须常驻轮询；有任务就连续领取和处理，队列为空时默认每 5 秒查询一次。PIM worker 直接完成下载主图、生成脚本、合成 MP4、上传 OSS、回传 PIM，不再依赖本地 `/api/product-videos` API 服务。
 - 服务启动时必须自动检测 CUDA/NVIDIA GPU；系统 `ffmpeg` 能看到 `h264_nvenc` 时，视频编码走 NVENC，默认 `PIXELLE_NVENC_PRESET=medium` 兼容 Ubuntu 20.04 的 ffmpeg 4.2。Chromium 帧渲染默认 CPU 稳定模式，只有显式设置 `PIXELLE_CHROMIUM_GPU=on` 时才尝试 GPU。
 - 批量生产对接 PIM 现有接口，不要求 PIM 调用我们的视频服务来创建批量任务：worker 调 `GET /api/video-tool/get?type=1` 取 1 个任务，生成后调 `POST /api/video-tool/submit` 回传 `status=2/3`。

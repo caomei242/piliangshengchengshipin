@@ -65,7 +65,7 @@ Pixelle-Video 采用分层架构设计：
 - PIM worker 不依赖本地 `/api/product-videos` API 服务；API 服务只保留给手工接口联调。
 - PIM 队列为空时，worker 按 `PIM_EMPTY_QUEUE_SLEEP_SECONDS` 间隔重试。
 - PIM 侧负责生成中任务超时重置，worker 不做心跳或续租。
-- 当前线上 `PIM_WORKER_CONCURRENCY=30`；手工 API 生成并发仍保持 `PRODUCT_VIDEO_MAX_CONCURRENCY=4`。`PIM_WORKER_ONCE=1` 联调时强制单任务。
+- 当前线上单机 `PIM_WORKER_CONCURRENCY=15`；2026-06-10 已验证单机 30 并发会让 CPU/ffmpeg 合成阶段打满并触发 240 秒超时。手工 API 生成并发仍保持 `PRODUCT_VIDEO_MAX_CONCURRENCY=4`。`PIM_WORKER_ONCE=1` 联调时强制单任务。
 
 PIM 环境通过 `PIM_ENV=dev|stage|prod` 或 `PIM_BASE_URL` 指定。
 
