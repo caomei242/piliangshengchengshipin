@@ -1686,7 +1686,7 @@
 <li>PIM worker 不依赖本地 <code>/api/product-videos</code> API 服务；API 服务只保留给手工接口联调。</li>
 <li>PIM 队列为空时，worker 按 <code>PIM_EMPTY_QUEUE_SLEEP_SECONDS</code> 间隔重试。</li>
 <li>PIM 侧负责生成中任务超时重置，worker 不做心跳或续租。</li>
-<li>当前默认 <code>PIM_WORKER_CONCURRENCY=4</code>，与本地 <code>PRODUCT_VIDEO_MAX_CONCURRENCY=4</code> 对齐；<code>PIM_WORKER_ONCE=1</code> 联调时强制单任务。</li>
+<li>当前线上 <code>PIM_WORKER_CONCURRENCY=30</code>；手工 API 生成并发仍保持 <code>PRODUCT_VIDEO_MAX_CONCURRENCY=4</code>。<code>PIM_WORKER_ONCE=1</code> 联调时强制单任务。</li>
 </ul>
 <p>PIM 环境通过 <code>PIM_ENV=dev|stage|prod</code> 或 <code>PIM_BASE_URL</code> 指定。</p>
 <p>状态流转：</p>
@@ -1736,7 +1736,7 @@
     <span class="md-icon" title="最后更新">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="2026年6月10日 07:37:39 UTC">2026年6月10日 07:37:39</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="2026年6月10日 08:23:25 UTC">2026年6月10日 08:23:25</span>
   </span>
 
     

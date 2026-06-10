@@ -2169,7 +2169,7 @@
 <p>一万个商品不应该作为一个超大请求进入视频服务，而应该是一万个独立 item：</p>
 <ul>
 <li>PIM 现有视频任务队列负责保存等待生成、生成中、成功、失败等状态。</li>
-<li>当前先按 4 并发跑：<code>PRODUCT_VIDEO_MAX_CONCURRENCY=4</code> 控制生成并发，<code>PIM_WORKER_CONCURRENCY=4</code> 控制 worker 同时领取和处理任务数。</li>
+<li>当前线上 PIM worker 按 30 并发跑：<code>PIM_WORKER_CONCURRENCY=30</code> 控制 worker 同时领取和处理任务数；手工 API 生成并发仍保持 <code>PRODUCT_VIDEO_MAX_CONCURRENCY=4</code>。</li>
 <li>多台服务器可以同时跑多个 worker，共同从 PIM 领取任务。</li>
 <li>PIM 负责生成中状态和超时重置；worker 不做心跳或续租。</li>
 <li>PIM worker 直接完成下载主图、调用方舟、合成 MP4、上传 OSS、回传 PIM，不依赖本地 <code>/api/product-videos</code> API 服务。</li>
@@ -2411,7 +2411,7 @@
 <ul>
 <li>将 PIM worker 在目标环境启用：<code>GET /api/video-tool/get?type=1</code> 领取任务，<code>POST /api/video-tool/submit</code> 回传结果。</li>
 <li>确认 PIM 接口鉴权方式和 dev/stage/prod 环境切换方式。</li>
-<li>压测 4 并发领取和生成、空队列重试频率、失败上报和 PIM 超时重置。</li>
+<li>压测 30 并发领取和生成、空队列重试频率、失败上报和 PIM 超时重置。</li>
 </ul>
 <p>1Panel 正式接口版 compose：</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>docker-compose.product-api.yml
@@ -2470,7 +2470,7 @@
     <span class="md-icon" title="最后更新">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="2026年6月10日 08:20:27 UTC">2026年6月10日 08:20:27</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="2026年6月10日 08:23:25 UTC">2026年6月10日 08:23:25</span>
   </span>
 
     
