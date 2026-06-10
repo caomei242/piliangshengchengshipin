@@ -859,4 +859,6 @@ class ProductVideoJobManager:
                 )
 
 
-product_video_job_manager = ProductVideoJobManager()
+product_video_job_manager = (
+    None if os.environ.get("PRODUCT_VIDEO_SKIP_MANAGER_INIT") == "1" else ProductVideoJobManager()
+)

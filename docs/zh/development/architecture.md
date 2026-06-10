@@ -59,9 +59,10 @@ Pixelle-Video 采用分层架构设计：
 批量生产时使用 `scripts/run_product_video_pim_worker.py` 主动对接 PIM：
 
 - `GET /api/video-tool/get?type=1` 从 PIM 领取一个待生成任务。
-- 将 PIM 返回的 `product.image_urls` 转成 `source_images[].image_type=main` 后传给本地 `/api/product-videos/jobs`。
-- 本地生成成功后，向 PIM `POST /api/video-tool/submit` 回传 `status=2` 和 `video_url`。
-- 本地生成失败后，向 PIM `POST /api/video-tool/submit` 回传 `status=3` 和 `error_msg`。
+- 将 PIM 返回的 `product.image_urls` 转成 `source_images[].image_type=main`，直接在 worker 内完成下载主图、调用方舟、合成 MP4、上传 OSS。
+- 生成成功后，向 PIM `POST /api/video-tool/submit` 回传 `status=2` 和 OSS `video_url`。
+- 生成失败后，向 PIM `POST /api/video-tool/submit` 回传 `status=3` 和 `error_msg`。
+- PIM worker 不依赖本地 `/api/product-videos` API 服务；API 服务只保留给手工接口联调。
 - PIM 队列为空时，worker 按 `PIM_EMPTY_QUEUE_SLEEP_SECONDS` 间隔重试。
 - PIM 侧负责生成中任务超时重置，worker 不做心跳或续租。
 - 当前默认 `PIM_WORKER_CONCURRENCY=4`，与本地 `PRODUCT_VIDEO_MAX_CONCURRENCY=4` 对齐；`PIM_WORKER_ONCE=1` 联调时强制单任务。

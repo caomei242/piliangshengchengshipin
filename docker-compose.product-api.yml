@@ -63,14 +63,29 @@ services:
     image: pixelle-video-product-api:20260602
     container_name: pixelle-video-pim-worker
     command: .venv/bin/python scripts/run_product_video_pim_worker.py
-    depends_on:
-      product-video-api:
-        condition: service_healthy
     environment:
       - TZ=Asia/Shanghai
-      - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN in .env}
-      - PRODUCT_VIDEO_API_BASE_URL=http://product-video-api:8000
+      - ARK_API_KEY=${ARK_API_KEY:-}
+      - GRSAI_API_KEY=${GRSAI_API_KEY:-}
+      - PIXELLE_RUNS_ROOT=/app/data/pixelle-ui-runs
+      - PRODUCT_VIDEO_STATE_ROOT=/app/data/product-video-jobs
       - PRODUCT_VIDEO_MAX_CONCURRENCY=${PRODUCT_VIDEO_MAX_CONCURRENCY:-4}
+      - PIXELLE_USE_CUDA=${PIXELLE_USE_CUDA:-auto}
+      - PIXELLE_FFMPEG_ENCODER=${PIXELLE_FFMPEG_ENCODER:-auto}
+      - PIXELLE_NVENC_PRESET=${PIXELLE_NVENC_PRESET:-medium}
+      - PIXELLE_CHROMIUM_GPU=${PIXELLE_CHROMIUM_GPU:-off}
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
+      - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-compute,utility,video,graphics}
+      - OSS_ACCESS_KEY_ID=${OSS_ACCESS_KEY_ID:-}
+      - OSS_ACCESS_KEY_SECRET=${OSS_ACCESS_KEY_SECRET:-}
+      - OSS_BUCKET=${OSS_BUCKET:-hlg-team}
+      - OSS_ENDPOINT=${OSS_ENDPOINT:-oss-cn-zhangjiakou.aliyuncs.com}
+      - OSS_INTERNAL_ENDPOINT=${OSS_INTERNAL_ENDPOINT:-oss-cn-zhangjiakou-internal.aliyuncs.com}
+      - OSS_USE_INTERNAL_ENDPOINT=${OSS_USE_INTERNAL_ENDPOINT:-false}
+      - OSS_PUBLIC_BASE_URL=${OSS_PUBLIC_BASE_URL:-}
+      - OSS_PREFIX=${OSS_PREFIX:-ai批量生产视频/}
+      - OSS_URL_MODE=${OSS_URL_MODE:-signed}
+      - OSS_SIGNED_URL_EXPIRES_SECONDS=${OSS_SIGNED_URL_EXPIRES_SECONDS:-604800}
       - PIM_ENV=${PIM_ENV:-dev}
       - PIM_BASE_URL=${PIM_BASE_URL:-}
       - PIM_TASK_TYPE=${PIM_TASK_TYPE:-1}
@@ -79,8 +94,9 @@ services:
       - PIM_EMPTY_QUEUE_SLEEP_SECONDS=${PIM_EMPTY_QUEUE_SLEEP_SECONDS:-5}
       - PIM_REQUEST_TIMEOUT_SECONDS=${PIM_REQUEST_TIMEOUT_SECONDS:-30}
       - PIM_WORKER_CONCURRENCY=${PIM_WORKER_CONCURRENCY:-4}
-      - PRODUCT_VIDEO_POLL_INTERVAL_SECONDS=${PRODUCT_VIDEO_POLL_INTERVAL_SECONDS:-5}
-      - PRODUCT_VIDEO_JOB_TIMEOUT_SECONDS=${PRODUCT_VIDEO_JOB_TIMEOUT_SECONDS:-1800}
+    volumes:
+      - ./data:/app/data
+      - ./output:/app/output
     restart: unless-stopped
     logging:
       driver: json-file

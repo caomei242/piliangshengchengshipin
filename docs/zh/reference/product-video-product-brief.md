@@ -427,9 +427,10 @@ video_url=https://hlg-team.oss-cn-zhangjiakou.aliyuncs.com/ai批量生产视频/
 一万个商品不应该作为一个超大请求进入视频服务，而应该是一万个独立 item：
 
 - PIM 现有视频任务队列负责保存等待生成、生成中、成功、失败等状态。
-- 当前先按 4 并发跑：`PRODUCT_VIDEO_MAX_CONCURRENCY=4` 控制本地生成并发，`PIM_WORKER_CONCURRENCY=4` 控制 worker 同时领取和处理任务数。
+- 当前先按 4 并发跑：`PRODUCT_VIDEO_MAX_CONCURRENCY=4` 控制生成并发，`PIM_WORKER_CONCURRENCY=4` 控制 worker 同时领取和处理任务数。
 - 多台服务器可以同时跑多个 worker，共同从 PIM 领取任务。
 - PIM 负责生成中状态和超时重置；worker 不做心跳或续租。
+- PIM worker 直接完成下载主图、调用方舟、合成 MP4、上传 OSS、回传 PIM，不依赖本地 `/api/product-videos` API 服务。
 - 单个商品失败不影响其它商品继续生成。
 - 任务超时未回传时，PIM 自动释放，允许重新领取。
 

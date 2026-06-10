@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import signal
 import threading
 import time
@@ -10,7 +11,22 @@ import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
 from typing import Any
+from uuid import uuid4
+
+os.environ.setdefault("PRODUCT_VIDEO_SKIP_MANAGER_INIT", "1")
+
+from api.product_video_jobs import (
+    ProductImagePreparationError,
+    call_ark,
+    compose_video,
+    prepare_product_run,
+    save_script,
+)
+from api.product_video_storage import upload_product_video_outputs
+from api.schemas.product_videos import ProductVideoOptions, ProductVideoProduct
 
 
 PIM_ENV_URLS = {
@@ -18,6 +34,7 @@ PIM_ENV_URLS = {
     "stage": "https://gdpim-stage.huanleguang.com",
     "prod": "https://gdpim.huanleguang.com",
 }
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def env_int(name: str, default: int) -> int:
@@ -60,12 +77,8 @@ class WorkerConfig:
     pim_base_url: str
     pim_env: str
     pim_task_type: int
-    product_video_api_base_url: str
-    internal_api_token: str
     empty_queue_sleep_seconds: float
-    poll_interval_seconds: float
     request_timeout_seconds: float
-    job_timeout_seconds: float
     worker_concurrency: int
     run_once: bool
     user_agent: str = "pixelle-product-video-pim-worker/1.0"
@@ -77,23 +90,12 @@ class WorkerConfig:
         if not pim_base_url:
             raise RuntimeError("PIM_BASE_URL 未配置，或 PIM_ENV 不是 dev/stage/prod")
 
-        internal_api_token = os.environ.get("INTERNAL_API_TOKEN", "").strip()
-        if not internal_api_token:
-            raise RuntimeError("INTERNAL_API_TOKEN 未配置")
-
         return cls(
             pim_base_url=pim_base_url.rstrip("/"),
             pim_env=pim_env,
             pim_task_type=env_int("PIM_TASK_TYPE", 1),
-            product_video_api_base_url=os.environ.get(
-                "PRODUCT_VIDEO_API_BASE_URL",
-                "http://127.0.0.1:8000",
-            ).rstrip("/"),
-            internal_api_token=internal_api_token,
             empty_queue_sleep_seconds=env_float("PIM_EMPTY_QUEUE_SLEEP_SECONDS", 5.0),
-            poll_interval_seconds=env_float("PRODUCT_VIDEO_POLL_INTERVAL_SECONDS", 5.0),
             request_timeout_seconds=env_float("PIM_REQUEST_TIMEOUT_SECONDS", 30.0),
-            job_timeout_seconds=env_float("PRODUCT_VIDEO_JOB_TIMEOUT_SECONDS", 1800.0),
             worker_concurrency=max(
                 1,
                 env_int(
@@ -284,67 +286,104 @@ def build_product_payload(task: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def create_local_product_video_job(config: WorkerConfig, task: dict[str, Any]) -> dict[str, Any]:
-    task_id = task["id"]
-    request_id = f"pim-video-tool-{task_id}"
-    payload = {
-        "request_id": request_id,
-        "source": f"pim-video-tool:{config.pim_env}",
-        "options": build_product_video_options(task.get("config_data")),
-        "products": [build_product_payload(task)],
-    }
-    if not payload["products"][0]["source_images"]:
+def safe_id_part(value: Any) -> str:
+    text = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(value or "task")).strip("._-")
+    return text[:64] or "task"
+
+
+def runs_root_from_env() -> Path:
+    return Path(os.environ.get("PIXELLE_RUNS_ROOT", str(REPO_ROOT / "data" / "pixelle-ui-runs")))
+
+
+def run_product_video_direct(config: WorkerConfig, task: dict[str, Any]) -> dict[str, Any]:
+    api_key = os.environ.get("ARK_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("ARK_API_KEY 未配置")
+
+    options = ProductVideoOptions(**build_product_video_options(task.get("config_data")))
+    product_payload = build_product_payload(task)
+    if not product_payload["source_images"]:
         raise RuntimeError("PIM product.image_urls 为空，无法生成商品视频")
+    product = ProductVideoProduct(**product_payload)
 
-    return request_json(
-        "POST",
-        f"{config.product_video_api_base_url}/api/product-videos/jobs",
-        timeout=config.request_timeout_seconds,
-        payload=payload,
-        headers={
-            "Accept": "application/json",
-            "Authorization": f"Bearer {config.internal_api_token}",
-            "Idempotency-Key": request_id,
-            "User-Agent": config.user_agent,
-        },
-    )
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    task_id_part = safe_id_part(task.get("id"))
+    suffix = uuid4().hex[:6]
+    job_id = f"pim_{config.pim_env}_{stamp}_{task_id_part}_{suffix}"
+    item_id = f"pim_item_{stamp}_{task_id_part}_{suffix}"
 
-
-def get_local_job(config: WorkerConfig, job_id: str) -> dict[str, Any]:
-    return request_json(
-        "GET",
-        f"{config.product_video_api_base_url}/api/product-videos/jobs/{job_id}",
-        timeout=config.request_timeout_seconds,
-        headers={
-            "Accept": "application/json",
-            "Authorization": f"Bearer {config.internal_api_token}",
-            "User-Agent": config.user_agent,
-        },
-    )
-
-
-def wait_local_job(config: WorkerConfig, job_id: str) -> dict[str, Any]:
     started_at = time.monotonic()
-    while True:
-        job = get_local_job(config, job_id)
-        items = job.get("items") or []
-        if not items:
-            raise RuntimeError(f"本地商品视频任务没有 items: {job_id}")
-        item = items[0]
-        status = item.get("status")
-        log(
-            "local job status",
-            job_id=job_id,
-            item_id=item.get("item_id"),
-            status=status,
-            progress=item.get("progress"),
-            stage=item.get("stage"),
-        )
-        if status in {"succeeded", "failed", "canceled"}:
-            return item
-        if time.monotonic() - started_at > config.job_timeout_seconds:
-            raise RuntimeError(f"本地商品视频任务超时: {job_id}")
-        time.sleep(config.poll_interval_seconds)
+    log("stage download_images", pim_task_id=task.get("id"), item_id=item_id)
+    run_dir, image_paths, run_meta = prepare_product_run(
+        runs_root_from_env(),
+        job_id,
+        item_id,
+        product,
+        options,
+    )
+
+    log(
+        "stage generate_script",
+        pim_task_id=task.get("id"),
+        item_id=item_id,
+        image_count=len(image_paths),
+        material_level=run_meta.get("material_level"),
+    )
+    script_payload = call_ark(
+        api_key=api_key,
+        model=options.model,
+        title=product.title,
+        category=product.category,
+        image_paths=image_paths,
+        options=options,
+    )
+    script_payload["material_level"] = run_meta["material_level"]
+    script_payload["selected_images"] = run_meta["selected_images"]
+    script_path = save_script(run_dir, script_payload)
+
+    log("stage compose_video", pim_task_id=task.get("id"), item_id=item_id)
+    video_path, _log_tail, video_meta = compose_video(
+        run_dir,
+        product.title,
+        product.category,
+        image_paths,
+        options,
+    )
+
+    log("stage upload_oss", pim_task_id=task.get("id"), item_id=item_id)
+    storage = upload_product_video_outputs(
+        item_id=item_id,
+        video_path=video_path,
+        script_path=script_path,
+    )
+    if not storage.get("enabled"):
+        raise RuntimeError("OSS 未配置，PIM worker 无法回传可访问视频地址")
+
+    video = storage.get("video") if isinstance(storage.get("video"), dict) else None
+    video_url = str(video.get("url") or "") if video else ""
+    if not video_url:
+        raise RuntimeError("OSS 上传完成但没有返回 video_url")
+
+    return {
+        "job_id": job_id,
+        "item_id": item_id,
+        "video_url": video_url,
+        "video_path": str(video_path),
+        "script_path": str(script_path),
+        "storage": storage,
+        "duration_seconds": round(float(video_meta["duration"]), 2),
+        "usage": script_payload.get("usage"),
+        "material_level": run_meta.get("material_level"),
+        "elapsed_seconds": round(time.monotonic() - started_at, 2),
+    }
+
+
+def pim_submit_task_id(task: dict[str, Any]) -> int:
+    value = task.get("id")
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError(f"PIM task id 不是可回传整数: {value}") from exc
 
 
 def submit_pim_result(config: WorkerConfig, task_id: int, *, status: int, video_url: str = "", error_msg: str = "") -> None:
@@ -354,13 +393,16 @@ def submit_pim_result(config: WorkerConfig, task_id: int, *, status: int, video_
         "video_url": video_url,
         "error_msg": error_msg,
     }
-    request_json(
+    body = request_json(
         "POST",
         f"{config.pim_base_url}/api/video-tool/submit",
         timeout=config.request_timeout_seconds,
         payload=payload,
         headers=optional_pim_headers(config),
     )
+    code = body.get("code")
+    if code not in {None, 0, 10000} and body.get("success") is not True:
+        raise RuntimeError(f"PIM submit 返回失败: {body}")
 
 
 def submit_pim_result_with_retry(
@@ -387,40 +429,47 @@ def submit_pim_result_with_retry(
     return False
 
 
-def error_message_from_item(item: dict[str, Any]) -> str:
-    message = str(item.get("error") or "商品视频生成失败")
-    return message[:1000]
-
-
 def process_task(config: WorkerConfig, task: dict[str, Any]) -> None:
-    task_id = int(task["id"])
-    log(
-        "picked task",
-        pim_task_id=task_id,
-        id_fallback=bool(task.get("_pim_id_fallback")),
-        product_id=(task.get("product") or {}).get("external_product_id"),
-    )
+    task_id: int | None = None
     try:
-        created = create_local_product_video_job(config, task)
-        job_id = created["job_id"]
-        item = wait_local_job(config, job_id)
-        if item.get("status") == "succeeded" and item.get("video_url"):
-            submitted = submit_pim_result_with_retry(
-                config,
-                task_id,
-                status=2,
-                video_url=str(item["video_url"]),
-                error_msg="",
-            )
-            log("submitted success" if submitted else "submit success exhausted", pim_task_id=task_id, job_id=job_id)
-        else:
-            error_msg = error_message_from_item(item)
-            submitted = submit_pim_result_with_retry(config, task_id, status=3, error_msg=error_msg)
-            log("submitted failure" if submitted else "submit failure exhausted", pim_task_id=task_id, job_id=job_id, error=error_msg)
+        task_id = pim_submit_task_id(task)
+        log(
+            "picked task",
+            pim_task_id=task_id,
+            id_fallback=bool(task.get("_pim_id_fallback")),
+            product_id=(task.get("product") or {}).get("external_product_id"),
+        )
+        result = run_product_video_direct(config, task)
+        submitted = submit_pim_result_with_retry(
+            config,
+            task_id,
+            status=2,
+            video_url=str(result["video_url"]),
+            error_msg="",
+        )
+        log(
+            "submitted success" if submitted else "submit success exhausted",
+            pim_task_id=task_id,
+            job_id=result["job_id"],
+            item_id=result["item_id"],
+            duration_seconds=result["duration_seconds"],
+            elapsed_seconds=result["elapsed_seconds"],
+        )
+    except ProductImagePreparationError as exc:
+        error_msg = str(exc)[:1000]
+        log(
+            "task failed during image preparation",
+            pim_task_id=task.get("id"),
+            error=error_msg,
+            material_level=exc.run_meta.get("material_level"),
+        )
+        if task_id is not None:
+            submit_pim_result_with_retry(config, task_id, status=3, error_msg=error_msg)
     except Exception as exc:
         error_msg = f"worker_internal_error: {str(exc)[:900]}"
-        log("task failed before normal completion", pim_task_id=task_id, error=error_msg)
-        submit_pim_result_with_retry(config, task_id, status=3, error_msg=error_msg)
+        log("task failed before normal completion", pim_task_id=task.get("id"), error=error_msg)
+        if task_id is not None:
+            submit_pim_result_with_retry(config, task_id, status=3, error_msg=error_msg)
 
 
 def run_worker_loop(config: WorkerConfig, *, worker_index: int, stop_event: threading.Event) -> None:
@@ -466,7 +515,7 @@ def main() -> None:
         pim_env=config.pim_env,
         pim_base_url=config.pim_base_url,
         task_type=config.pim_task_type,
-        product_video_api=config.product_video_api_base_url,
+        runs_root=runs_root_from_env(),
         worker_concurrency=1 if config.run_once else config.worker_concurrency,
     )
 
