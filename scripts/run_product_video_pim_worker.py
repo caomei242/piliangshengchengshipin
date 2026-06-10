@@ -154,7 +154,30 @@ def is_empty_queue_response(status_code: int, body: dict[str, Any] | None) -> bo
         return False
     message = str(body.get("message") or "")
     code = body.get("code")
-    return status_code == 500 and (message == "没有需要生成的任务" or code == 500)
+    return message == "没有需要生成的任务" or code in {500, 10005}
+
+
+def normalize_pim_get_body(body: dict[str, Any]) -> dict[str, Any] | None:
+    if is_empty_queue_response(200, body):
+        return None
+
+    if body.get("code") == 10000 and isinstance(body.get("data"), dict):
+        task = dict(body["data"])
+    elif "id" in body:
+        task = dict(body)
+    elif isinstance(body.get("data"), dict):
+        task = dict(body["data"])
+    else:
+        raise RuntimeError(f"PIM get 返回格式无法识别: {body}")
+
+    if "id" not in task:
+        fallback_id = task.get("_generate_item_id") or task.get("generate_item_id") or task.get("item_id")
+        if fallback_id is None:
+            raise RuntimeError(f"PIM get 返回缺少 id: {body}")
+        task["id"] = fallback_id
+        task["_pim_id_fallback"] = True
+
+    return task
 
 
 def get_pim_task(config: WorkerConfig) -> dict[str, Any] | None:
@@ -173,11 +196,7 @@ def get_pim_task(config: WorkerConfig) -> dict[str, Any] | None:
             return None
         raise
 
-    if body.get("code") == 500 and body.get("message") == "没有需要生成的任务":
-        return None
-    if "id" not in body:
-        raise RuntimeError(f"PIM get 返回缺少 id: {body}")
-    return body
+    return normalize_pim_get_body(body)
 
 
 def normalize_target_duration(value: Any) -> list[float]:
@@ -375,7 +394,12 @@ def error_message_from_item(item: dict[str, Any]) -> str:
 
 def process_task(config: WorkerConfig, task: dict[str, Any]) -> None:
     task_id = int(task["id"])
-    log("picked task", pim_task_id=task_id, product_id=(task.get("product") or {}).get("external_product_id"))
+    log(
+        "picked task",
+        pim_task_id=task_id,
+        id_fallback=bool(task.get("_pim_id_fallback")),
+        product_id=(task.get("product") or {}).get("external_product_id"),
+    )
     try:
         created = create_local_product_video_job(config, task)
         job_id = created["job_id"]
