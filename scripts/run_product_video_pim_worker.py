@@ -90,7 +90,7 @@ class WorkerConfig:
                 "http://127.0.0.1:8000",
             ).rstrip("/"),
             internal_api_token=internal_api_token,
-            empty_queue_sleep_seconds=env_float("PIM_EMPTY_QUEUE_SLEEP_SECONDS", 30.0),
+            empty_queue_sleep_seconds=env_float("PIM_EMPTY_QUEUE_SLEEP_SECONDS", 5.0),
             poll_interval_seconds=env_float("PRODUCT_VIDEO_POLL_INTERVAL_SECONDS", 5.0),
             request_timeout_seconds=env_float("PIM_REQUEST_TIMEOUT_SECONDS", 30.0),
             job_timeout_seconds=env_float("PRODUCT_VIDEO_JOB_TIMEOUT_SECONDS", 1800.0),

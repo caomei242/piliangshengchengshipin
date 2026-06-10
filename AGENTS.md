@@ -26,6 +26,7 @@
 - 原 Pixelle 上游保留为 `upstream=https://github.com/AIDC-AI/Pixelle-Video.git`，只用于必要时查看或对比原项目，不作为默认推送目标。
 - 远端 `origin/main` 是 2026-06-09 用当前代码树做的干净初始提交，不带原 Pixelle 浅克隆历史；本地备份分支 `backup/shallow-upstream-before-publish` 保留了推送前的浅历史提交。
 - 提交前必须做密钥扫描，确认没有真实 Ark、OSS、1Panel、PIM 或内部 token 进入 Git。
+- 2026-06-10 起，凡是涉及代码改动，完成验证后必须提交并推送到 `origin/main`，避免线上或本地变更无法回滚。
 
 ## 接口约定
 
@@ -37,6 +38,7 @@
 - 生成成功后优先上传 OSS；`video_url` / `script_url` 优先返回 OSS 地址，`download_url` / `script_download_url` 只作为本地调试下载兜底。
 - 一个商品失败不影响同批次其他商品继续生成。
 - 当前默认并发先设 4：`PRODUCT_VIDEO_MAX_CONCURRENCY=4`，PIM worker 默认 `PIM_WORKER_CONCURRENCY=4`；`PIM_WORKER_ONCE=1` 联调时保持单任务，避免误领多条。
+- PIM worker 必须常驻轮询；有任务就连续领取和处理，队列为空时默认每 5 秒查询一次。
 - 服务启动时必须自动检测 CUDA/NVIDIA GPU；系统 `ffmpeg` 能看到 `h264_nvenc` 时，视频编码走 NVENC，默认 `PIXELLE_NVENC_PRESET=medium` 兼容 Ubuntu 20.04 的 ffmpeg 4.2。Chromium 帧渲染默认 CPU 稳定模式，只有显式设置 `PIXELLE_CHROMIUM_GPU=on` 时才尝试 GPU。
 - 批量生产对接 PIM 现有接口，不要求 PIM 调用我们的视频服务来创建批量任务：worker 调 `GET /api/video-tool/get?type=1` 取 1 个任务，生成后调 `POST /api/video-tool/submit` 回传 `status=2/3`。
 - PIM 环境地址：dev `https://gdpim-dev.huanleguang.com`，stage `https://gdpim-stage.huanleguang.com`，prod `https://gdpim.huanleguang.com`。
