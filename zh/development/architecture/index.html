@@ -1680,9 +1680,10 @@
 <p>批量生产时使用 <code>scripts/run_product_video_pim_worker.py</code> 主动对接 PIM：</p>
 <ul>
 <li><code>GET /api/video-tool/get?type=1</code> 从 PIM 领取一个待生成任务。</li>
-<li>将 PIM 返回的 <code>product.image_urls</code> 转成 <code>source_images[].image_type=main</code> 后传给本地 <code>/api/product-videos/jobs</code>。</li>
-<li>本地生成成功后，向 PIM <code>POST /api/video-tool/submit</code> 回传 <code>status=2</code> 和 <code>video_url</code>。</li>
-<li>本地生成失败后，向 PIM <code>POST /api/video-tool/submit</code> 回传 <code>status=3</code> 和 <code>error_msg</code>。</li>
+<li>将 PIM 返回的 <code>product.image_urls</code> 转成 <code>source_images[].image_type=main</code>，直接在 worker 内完成下载主图、调用方舟、合成 MP4、上传 OSS。</li>
+<li>生成成功后，向 PIM <code>POST /api/video-tool/submit</code> 回传 <code>status=2</code> 和 OSS <code>video_url</code>。</li>
+<li>生成失败后，向 PIM <code>POST /api/video-tool/submit</code> 回传 <code>status=3</code> 和 <code>error_msg</code>。</li>
+<li>PIM worker 不依赖本地 <code>/api/product-videos</code> API 服务；API 服务只保留给手工接口联调。</li>
 <li>PIM 队列为空时，worker 按 <code>PIM_EMPTY_QUEUE_SLEEP_SECONDS</code> 间隔重试。</li>
 <li>PIM 侧负责生成中任务超时重置，worker 不做心跳或续租。</li>
 <li>当前默认 <code>PIM_WORKER_CONCURRENCY=4</code>，与本地 <code>PRODUCT_VIDEO_MAX_CONCURRENCY=4</code> 对齐；<code>PIM_WORKER_ONCE=1</code> 联调时强制单任务。</li>
@@ -1735,7 +1736,7 @@
     <span class="md-icon" title="最后更新">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="2026年6月9日 09:08:24 UTC">2026年6月9日 09:08:24</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="2026年6月10日 07:37:39 UTC">2026年6月10日 07:37:39</span>
   </span>
 
     

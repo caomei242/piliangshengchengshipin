@@ -2168,9 +2168,10 @@
 <p>一万个商品不应该作为一个超大请求进入视频服务，而应该是一万个独立 item：</p>
 <ul>
 <li>PIM 现有视频任务队列负责保存等待生成、生成中、成功、失败等状态。</li>
-<li>当前先按 4 并发跑：<code>PRODUCT_VIDEO_MAX_CONCURRENCY=4</code> 控制本地生成并发，<code>PIM_WORKER_CONCURRENCY=4</code> 控制 worker 同时领取和处理任务数。</li>
+<li>当前先按 4 并发跑：<code>PRODUCT_VIDEO_MAX_CONCURRENCY=4</code> 控制生成并发，<code>PIM_WORKER_CONCURRENCY=4</code> 控制 worker 同时领取和处理任务数。</li>
 <li>多台服务器可以同时跑多个 worker，共同从 PIM 领取任务。</li>
 <li>PIM 负责生成中状态和超时重置；worker 不做心跳或续租。</li>
+<li>PIM worker 直接完成下载主图、调用方舟、合成 MP4、上传 OSS、回传 PIM，不依赖本地 <code>/api/product-videos</code> API 服务。</li>
 <li>单个商品失败不影响其它商品继续生成。</li>
 <li>任务超时未回传时，PIM 自动释放，允许重新领取。</li>
 </ul>
@@ -2468,7 +2469,7 @@
     <span class="md-icon" title="最后更新">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="2026年6月9日 10:29:40 UTC">2026年6月9日 10:29:40</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="2026年6月10日 07:37:39 UTC">2026年6月10日 07:37:39</span>
   </span>
 
     
