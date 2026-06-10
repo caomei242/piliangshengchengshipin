@@ -429,6 +429,49 @@ def submit_pim_result_with_retry(
     return False
 
 
+def image_preparation_customer_message(exc: ProductImagePreparationError) -> str:
+    meta = exc.run_meta
+    target_count = int(meta.get("target_scene_count") or 5)
+    downloaded_count = int(meta.get("downloaded_image_count") or 0)
+    submitted_count = int(meta.get("submitted_image_count") or 0)
+    skipped_count = int(meta.get("skipped_image_count") or 0)
+    raw_message = str(exc)
+
+    if "source_images_insufficient" in raw_message:
+        if skipped_count > 0:
+            return (
+                f"主图数量不足：生成视频需要 {target_count} 张可用主图，"
+                f"当前可用 {downloaded_count} 张；共提交 {submitted_count} 张，"
+                f"其中 {skipped_count} 张不是主图。请补充商品主图后重试。"
+            )
+        return (
+            f"主图数量不足：生成视频需要 {target_count} 张可用主图，"
+            f"当前只有 {downloaded_count} 张。请补充商品主图后重试。"
+        )
+
+    if "source_images_unusable" in raw_message:
+        if submitted_count <= 0:
+            return "商品没有可用主图，无法生成视频。请补充商品主图后重试。"
+        return "商品主图不可用或下载失败。请检查主图链接是否能正常访问后重试。"
+
+    return "商品主图处理失败。请检查商品主图后重试。"
+
+
+def internal_customer_message(exc: Exception) -> str:
+    message = str(exc)
+    if "ARK_API_KEY" in message or "未配置" in message:
+        return "视频生成服务配置异常，请联系技术处理。"
+    if "火山方舟" in message or "scenes" in message or "脚本" in message:
+        return "视频脚本生成失败。请稍后重试；如果多次失败请联系技术处理。"
+    if "OSS" in message or "上传" in message or "video_url" in message:
+        return "视频生成后上传失败。请稍后重试；如果多次失败请联系技术处理。"
+    if "run_product_asset_test.py" in message or "asset_based.py" in message or "compose" in message:
+        return "视频合成失败。请稍后重试；如果多次失败请联系技术处理。"
+    if "product.image_urls 为空" in message:
+        return "商品没有可用主图，无法生成视频。请补充商品主图后重试。"
+    return "视频生成失败。请稍后重试；如果多次失败请联系技术处理。"
+
+
 def process_task(config: WorkerConfig, task: dict[str, Any]) -> None:
     task_id: int | None = None
     try:
@@ -456,20 +499,28 @@ def process_task(config: WorkerConfig, task: dict[str, Any]) -> None:
             elapsed_seconds=result["elapsed_seconds"],
         )
     except ProductImagePreparationError as exc:
-        error_msg = str(exc)[:1000]
+        internal_error = str(exc)[:1000]
+        customer_error = image_preparation_customer_message(exc)
         log(
             "task failed during image preparation",
             pim_task_id=task.get("id"),
-            error=error_msg,
+            error=internal_error,
+            customer_error=customer_error,
             material_level=exc.run_meta.get("material_level"),
         )
         if task_id is not None:
-            submit_pim_result_with_retry(config, task_id, status=3, error_msg=error_msg)
+            submit_pim_result_with_retry(config, task_id, status=3, error_msg=customer_error)
     except Exception as exc:
-        error_msg = f"worker_internal_error: {str(exc)[:900]}"
-        log("task failed before normal completion", pim_task_id=task.get("id"), error=error_msg)
+        internal_error = f"worker_internal_error: {str(exc)[:900]}"
+        customer_error = internal_customer_message(exc)
+        log(
+            "task failed before normal completion",
+            pim_task_id=task.get("id"),
+            error=internal_error,
+            customer_error=customer_error,
+        )
         if task_id is not None:
-            submit_pim_result_with_retry(config, task_id, status=3, error_msg=error_msg)
+            submit_pim_result_with_retry(config, task_id, status=3, error_msg=customer_error)
 
 
 def run_worker_loop(config: WorkerConfig, *, worker_index: int, stop_event: threading.Event) -> None:

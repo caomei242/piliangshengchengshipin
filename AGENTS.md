@@ -42,6 +42,7 @@
 - PIM worker 必须常驻轮询；有任务就连续领取和处理，队列为空时默认每 5 秒查询一次。PIM worker 直接完成下载主图、生成脚本、合成 MP4、上传 OSS、回传 PIM，不再依赖本地 `/api/product-videos` API 服务。
 - 服务启动时必须自动检测 CUDA/NVIDIA GPU；系统 `ffmpeg` 能看到 `h264_nvenc` 时，视频编码走 NVENC，默认 `PIXELLE_NVENC_PRESET=medium` 兼容 Ubuntu 20.04 的 ffmpeg 4.2。Chromium 帧渲染默认 CPU 稳定模式，只有显式设置 `PIXELLE_CHROMIUM_GPU=on` 时才尝试 GPU。
 - 批量生产对接 PIM 现有接口，不要求 PIM 调用我们的视频服务来创建批量任务：worker 调 `GET /api/video-tool/get?type=1` 取 1 个任务，生成后调 `POST /api/video-tool/submit` 回传 `status=2/3`。
+- PIM `status=3` 的 `error_msg` 会给客户看，必须是中文短句；英文错误码、Python 堆栈、内部路径只允许写 worker 日志，不允许直接回传给 PIM。
 - PIM 环境地址：dev `https://gdpim-dev.huanleguang.com`，stage `https://gdpim-stage.huanleguang.com`，prod `https://gdpim.huanleguang.com`。
 - PIM 侧负责生成中状态和超时重置：每 30 分钟将生成中超过 1 小时未更新任务重置为等待生成；worker 不做心跳或续租。
 
