@@ -428,7 +428,7 @@ video_url=https://hlg-team.oss-cn-zhangjiakou.aliyuncs.com/ai批量生产视频/
 一万个商品不应该作为一个超大请求进入视频服务，而应该是一万个独立 item：
 
 - PIM 现有视频任务队列负责保存等待生成、生成中、成功、失败等状态。
-- 当前先按 4 并发跑：`PRODUCT_VIDEO_MAX_CONCURRENCY=4` 控制生成并发，`PIM_WORKER_CONCURRENCY=4` 控制 worker 同时领取和处理任务数。
+- 当前线上 PIM worker 按 30 并发跑：`PIM_WORKER_CONCURRENCY=30` 控制 worker 同时领取和处理任务数；手工 API 生成并发仍保持 `PRODUCT_VIDEO_MAX_CONCURRENCY=4`。
 - 多台服务器可以同时跑多个 worker，共同从 PIM 领取任务。
 - PIM 负责生成中状态和超时重置；worker 不做心跳或续租。
 - PIM worker 直接完成下载主图、调用方舟、合成 MP4、上传 OSS、回传 PIM，不依赖本地 `/api/product-videos` API 服务。
@@ -626,7 +626,7 @@ flowchart TD
 
 - 将 PIM worker 在目标环境启用：`GET /api/video-tool/get?type=1` 领取任务，`POST /api/video-tool/submit` 回传结果。
 - 确认 PIM 接口鉴权方式和 dev/stage/prod 环境切换方式。
-- 压测 4 并发领取和生成、空队列重试频率、失败上报和 PIM 超时重置。
+- 压测 30 并发领取和生成、空队列重试频率、失败上报和 PIM 超时重置。
 
 1Panel 正式接口版 compose：
 
